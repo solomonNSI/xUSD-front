@@ -3,27 +3,26 @@ import { useContext, useEffect, useState } from 'react';
 import { MetaMaskContext } from '../contexts/MetaMask';
 import debounce from '../lib/debounce';
 import Axios from 'axios';
-import {ethers} from 'ethers';
+import { ethers } from "ethers";
 
 const SwapInput = ({ token, amount, setAmount, disabled, readOnly }) => {
   return (
     <fieldset className="SwapInput" disabled={disabled}>
-    <input 
-      type="text"
-      id={token + "_amount"} 
-      placeholder="0.0"
-      value={amount} 
-      onChange={(ev) => {
-        let sanitizedValue = ev.target.value.replace(/[^0-9.]/g, ''); // Remove leading zeros and non-numeric characters
-        if (sanitizedValue !== '0') { sanitizedValue = sanitizedValue.replace(/^0+/, '');}// input is "0"? keep it : remove leading zeros
-        setAmount(sanitizedValue);
-      }}
-      readOnly={readOnly} 
-    />
+      <input 
+        type="text"
+        id={token + "_amount"} 
+        placeholder="0.0"
+        value={amount} 
+        onChange={(ev) => {
+          setAmount(ev.target.value);
+        }}
+        readOnly={readOnly} 
+      />
       <span className='pl-2 pt-2'>{token}</span>
     </fieldset>
   );
 }
+
 
 const ChangeDirectionButton = ({ onClick, disabled }) => {
   return ( <button className='ChangeDirectionBtn' onClick={onClick} disabled={disabled}>🔄</button>)
@@ -35,8 +34,8 @@ const SwapForm = () => {
   const account = metamaskContext.account;
 
   const [trueForMint, setMint] = useState(true);
-  const [amountFromUser, setAmountFromUser] = useState(0);
-  const [amountOfXUSD, setAmountOfXUSD] = useState();
+  const [amountFromUser, setAmountFromUser] = useState(0); // amountFromUser - ethAmount equivalent
+  const [amountOfXUSD, setAmountOfXUSD] = useState(0);
   const [loading, setLoading] = useState(false);  
   const [ethToUsdRate, setEthToUsdRate] = useState(null);
 
@@ -67,11 +66,17 @@ const SwapForm = () => {
       }
 
       if (trueForMint) {
+        console.log("amountFromUser: ", amountFromUser);
+        console.log("priceOfETH: ", ethToUsdRate);
+
         const mintData = {
           receiverAddress: account,
           amount: parseFloat(amountOfXUSD),
+          amountOfETH: parseFloat(amountFromUser),
+          priceOfEth: ethToUsdRate,
         };
-        const addr = "0x74E4ad43c1EB21D0D1872F43Ed6ee29A813d890D";
+
+        const addr = "0xe61a67ae966c9e2fb8effd30b7cdd29689fd6a99";
         const ether= amountFromUser;
 
         await window.ethereum.send("eth_requestAccounts");
@@ -84,17 +89,23 @@ const SwapForm = () => {
         });
         console.log({ ether, addr });
         console.log("tx", tx);
-
+        await new Promise(resolve => setTimeout(resolve, 70000));
         const response = await Axios.post('http://localhost:3001/api/token/mint', mintData);
+        console.log(response);
         console.log(`Transaction successful. TX Hash: ${response.data.transactionHash}`);
 
       } else {
+        console.log("in burn");
         const burnData = {
           burnerAddress: account,
           amount: parseFloat(amountOfXUSD),
+          amountOfETH: parseFloat(amountFromUser),
+          priceOfEth: ethToUsdRate,
         };
 
         const response = await Axios.post('http://localhost:3001/api/token/burn', burnData);
+        console.log(response);
+
         console.log(`Transaction successful. TX Hash: ${response.data.transactionHash}`);
       }
     } catch (error) {
@@ -111,10 +122,10 @@ const SwapForm = () => {
     setLoading(true);
     if(trueForMint) {
       const total = amount * ethToUsdRate;
-      setAmountOfXUSD(total.toFixed(2));
+      setAmountOfXUSD(total.toFixed(3));
     } else {
       const total = amount / ethToUsdRate;
-      setAmountFromUser(total.toFixed(2));
+      setAmountFromUser(total.toFixed(5));
     }
     setLoading(false);
     return;
