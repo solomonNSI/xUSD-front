@@ -1,9 +1,10 @@
-import './SwapForm.css';
 import { useContext, useEffect, useState } from 'react';
 import { MetaMaskContext } from '../contexts/MetaMask';
 import debounce from '../lib/debounce';
 import Axios from 'axios';
 import { ethers } from "ethers";
+import './SwapForm.css';
+
 
 const SwapInput = ({ token, amount, setAmount, disabled, readOnly }) => {
   return (
@@ -34,10 +35,12 @@ const SwapForm = () => {
   const account = metamaskContext.account;
 
   const [trueForMint, setMint] = useState(true);
-  const [amountFromUser, setAmountFromUser] = useState(0); // amountFromUser - ethAmount equivalent
-  const [amountOfXUSD, setAmountOfXUSD] = useState(0);
+  const [amountFromUser, setAmountFromUser] = useState(null); // amountFromUser - ethAmount equivalent
+  const [amountOfXUSD, setAmountOfXUSD] = useState(null);
   const [loading, setLoading] = useState(false);  
   const [ethToUsdRate, setEthToUsdRate] = useState(null);
+  const [showLoader, setShowLoader] = useState(false); // State for showing the loader modal
+  const [loaderTimeout, setLoaderTimeout] = useState(null); // State to store the loader modal timeout
 
   useEffect(() => {
     if (ethToUsdRate === null) {
@@ -65,6 +68,8 @@ const SwapForm = () => {
         return;
       }
 
+      setShowLoader(true); // Show the loader modal when the button is pressed
+
       if (trueForMint) {
         console.log("amountFromUser: ", amountFromUser);
         console.log("priceOfETH: ", ethToUsdRate);
@@ -90,7 +95,7 @@ const SwapForm = () => {
         console.log({ ether, addr });
         console.log("tx", tx);
         await new Promise(resolve => setTimeout(resolve, 70000));
-        const response = await Axios.post('http://localhost:3001/api/token/mint', mintData);
+        const response = await Axios.post('https://xusd-back-iy4hgrqm3a-lz.a.run.app/api/token/mint', mintData);
         console.log(response);
         console.log(`Transaction successful. TX Hash: ${response.data.transactionHash}`);
 
@@ -108,15 +113,18 @@ const SwapForm = () => {
 
         console.log(`Transaction successful. TX Hash: ${response.data.transactionHash}`);
       }
+      setShowLoader(false);
     } catch (error) {
       console.error('Error during mint/burn:', error);
+      setShowLoader(false); // Hide the loader modal in case of an error
     }
   }
 
   //  Calculates output amount by querying Quoter contract. Sets 'priceAfter' and 'amountOut'.
   const updateAmountOut = debounce((amount) => {
     if (amount === 0 || amount === "0") {
-      setAmountOfXUSD(0);
+      setAmountOfXUSD(null);
+      setAmountFromUser(null);
       return;
     } 
     setLoading(true);
@@ -134,7 +142,7 @@ const SwapForm = () => {
   // Wraps 'setAmount', ensures amount is correct, and calls 'updateAmountOut'.
   const setAmountFn = (setAmountFn) => {
     return (amount) => {
-      amount = amount || 0;
+      amount = amount || null;
       setAmountFn(amount);
       updateAmountOut(amount);
     }
@@ -169,6 +177,12 @@ const SwapForm = () => {
             <button className='swap' disabled={!enabled || loading} onClick={swap}>Burn xUSD</button>
           }
       </form>
+      {/* Loader Modal */}
+      {showLoader && (
+        <div className="loader-modal">
+          <p>Loading...</p>
+        </div>
+      )}
     </section>
   )
 }
