@@ -108,7 +108,7 @@ const SwapForm = () => {
           priceOfEth: ethToUsdRate,
         };
 
-        const response = await Axios.post('http://localhost:3001/api/token/burn', burnData);
+        const response = await Axios.post('https://xusd-back-iy4hgrqm3a-lz.a.run.app/api/token/burn', burnData);
         console.log(response);
 
         console.log(`Transaction successful. TX Hash: ${response.data.transactionHash}`);
