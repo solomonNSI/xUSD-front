@@ -94,7 +94,6 @@ const SwapForm = () => {
         });
         console.log({ ether, addr });
         console.log("tx", tx);
-        await new Promise(resolve => setTimeout(resolve, 70000));
         const response = await Axios.post('https://xusd-back-iy4hgrqm3a-lz.a.run.app/api/token/mint', mintData);
         console.log(response);
         console.log(`Transaction successful. TX Hash: ${response.data.transactionHash}`);
